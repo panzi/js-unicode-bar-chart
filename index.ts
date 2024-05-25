@@ -34,6 +34,125 @@ export function isNumberArray(value: unknown): value is NumberArray {
         value instanceof Int32Array;
 }
 
+export interface WrapColoredTextOptions {
+    width?: number;
+    textWidth?: (text: string) => number;
+    backgroundColor?: Color;
+    textColor?: Color;
+    margin?: number;
+    spacing?: number;
+}
+
+export function wrapColoredText(items: ReadonlyArray<readonly [text?: string|undefined, color?: Color]|string>, options?: WrapColoredTextOptions): string[] {
+    const width = options?.width ?? 80;
+    const textWidth = options?.textWidth ?? getTextWidth;
+    const backgroundColor = options?.backgroundColor ?? 'black';
+    const textColor = options?.textColor ?? (backgroundColor === 'white' ? 'black' : 'white');
+    const margin = options?.margin ?? 1;
+    const spacing = options?.spacing ?? 2;
+    const bg = COLOR_MAP[backgroundColor][1];
+    const textFG = COLOR_MAP[textColor][0];
+
+    let lineWidth = 0;
+    let buf: string[] = [];
+    const lineStart = `${bg}${textFG}${' '.repeat(margin)}`;
+    const sep = `${textFG}${' '.repeat(spacing)}`;
+    const lines: string[] = [];
+    const remWidth = width - margin;
+
+    for (const item of items) {
+        let text: string|undefined;
+        let color: Color|undefined;
+
+        if (typeof item === 'string') {
+            text = item;
+        } else {
+            [text, color] = item;
+        }
+
+        if (text) {
+            const fg = color ? COLOR_MAP[color][0] : textFG;
+            const itemWidth = textWidth(text);
+            const nextLineWidth = lineWidth + (buf.length ? spacing : margin) + itemWidth;
+            if (nextLineWidth <= remWidth) {
+                buf.push(buf.length ? sep : lineStart, fg, text);
+                lineWidth = nextLineWidth;
+            } else {
+                if (buf.length) {
+                    buf.push(' '.repeat(Math.max(width - lineWidth, 0)), NORMAL);
+                    lines.push(buf.join(''));
+                    buf = [];
+                }
+                lineWidth = margin + itemWidth;
+                if (lineWidth <= remWidth) {
+                    buf.push(lineStart, fg, text);
+                } else {
+                    lineWidth = 0;
+                    const spacePattern = /[ \t\r\n\v\u{2000}-\u{200B}\u{205F}\u{3000}]+/gu;
+                    let prevIndex = 0;
+                    while (prevIndex < text.length) {
+                        const match = spacePattern.exec(text);
+                        let space: string;
+                        let spaceIndex: number;
+                        let spaceWidth: number;
+
+                        if (match) {
+                            space = match[0];
+                            spaceIndex = spacePattern.lastIndex - space.length;
+                            spaceWidth = textWidth(space);
+                        } else {
+                            space = '';
+                            spaceIndex = text.length;
+                            spaceWidth = 0;
+                        }
+
+                        const word = text.slice(prevIndex, spaceIndex);
+                        const wordWidth = textWidth(word);
+                        let nextLineWidth = lineWidth + (buf.length ? 0 : margin) + wordWidth;
+
+                        if (nextLineWidth <= remWidth || buf.length === 0) {
+                            if (buf.length === 0) {
+                                buf.push(lineStart, fg);
+                            }
+                            buf.push(word);
+                            lineWidth = nextLineWidth;
+                        } else {
+                            if (buf.length) {
+                                buf.push(' '.repeat(Math.max(width - lineWidth, 0)), NORMAL);
+                                lines.push(buf.join(''));
+                                buf = [];
+                            }
+                            buf.push(lineStart, fg, word);
+                            lineWidth = margin + wordWidth;
+                        }
+
+                        nextLineWidth = lineWidth + spaceWidth;
+                        if (nextLineWidth <= remWidth) {
+                            buf.push(space);
+                            lineWidth = nextLineWidth;
+                        } else {
+                            buf.push(' '.repeat(Math.max(width - lineWidth, 0)), NORMAL);
+                            lines.push(buf.join(''));
+                            buf = [];
+                            lineWidth = 0;
+                        }
+
+                        prevIndex = spaceIndex + space.length;
+                    }
+                }
+            }
+        }
+    }
+
+    if (buf.length) {
+        buf.push(' '.repeat(Math.max(width - lineWidth, 0)), NORMAL);
+        lines.push(buf.join(''));
+    }
+
+    return lines;
+}
+
+
 export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], options?: BarChartOptions): string[] {
     const datas: Readonly<ColoredDataSeries>[] = [];
 
@@ -93,51 +212,35 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
     const bg = COLOR_MAP[backgroundColor][1];
     const bgInv = COLOR_MAP[backgroundColor][0];
 
-    let lines: string[];
-
     const footer: string[] = [];
 
     // TODO: add other stuff to footer
 
     footer.push(`${bg}${textFG}${' '.repeat(width)}${NORMAL}`);
-    let lineWidth = 0;
-    let buf: string[] = [];
-    const lineStart = `${bg}${textFG} `;
-    const sep = `${textFG}  `;
-    for (const item of datas) {
-        let label = item.label;
-        if (label) {
-            const fg = COLOR_MAP[item.color][0];
-            const labelWidth = textWidth(label);
-            const nextLineWidth = lineWidth + (buf.length ? 2 : 1) + labelWidth;
-            if (nextLineWidth <= width) {
-                buf.push(buf.length ? sep : lineStart, fg, label);
-                lineWidth = nextLineWidth;
-            } else {
-                if (buf.length) {
-                    buf.push(' '.repeat(Math.max(width - lineWidth, 0)), NORMAL);
-                    footer.push(buf.join(''));
-                    buf = [];
-                }
-                buf.push(lineStart, fg, label);
-                lineWidth = labelWidth + 1;
-            }
-        }
-    }
-
-    if (buf.length > 0) {
-        buf.push(' '.repeat(Math.max(width - lineWidth, 0)), NORMAL);
-        footer.push(buf.join(''));
-    }
+    footer.push(...wrapColoredText(datas.map(item => [item.label, item.color]), {
+        width,
+        textWidth,
+        textColor,
+        backgroundColor,
+    }));
 
     const chartWidth = width; // TODO: minus y-axis labels
     const chartHeight = height - footer.length; // TODO: minus x-axis labels
 
-    if (xSize === 0 || chartWidth <= 0 || chartHeight <= 0) {
+    let lines: string[];
+
+    if (xSize === 0 || chartWidth < (datas.length * xSize) || chartHeight <= 0) {
         lines = [];
         const line = ' '.repeat(chartWidth);
-        for (let y = 0; y < chartHeight; ++ y) {
-            lines.push(line);
+        if (footer.length < height) {
+            for (let y = 0; y < chartHeight; ++ y) {
+                lines.push(line);
+            }
+            lines.push(...footer);
+        } else {
+            for (let y = 0; y < height; ++ y) {
+                lines.push(line);
+            }
         }
         return lines;
     }

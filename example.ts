@@ -67,7 +67,7 @@ function main() {
             },
             {
                 label: 'Data Series #7',
-                data: makeSeries(xSize, x => x / 2),
+                data: makeSeries(xSize, x => x / 2 - 1 / 4),
             },
         ];
 
