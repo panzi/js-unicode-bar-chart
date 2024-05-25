@@ -1,0 +1,8 @@
+.git
+.gitignore
+.gitmodules
+.github
+/tmp
+/dist/example.*
+*.png
+*.tgz
