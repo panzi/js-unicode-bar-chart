@@ -52,7 +52,10 @@ export function wrapColoredText(items: ReadonlyArray<readonly [text?: string|und
     const width = options?.width ?? 80;
     const textWidth = options?.textWidth ?? getTextWidth;
     const backgroundColor = options?.backgroundColor ?? 'black';
-    const textColor = options?.textColor ?? (backgroundColor === 'white' ? 'black' : 'white');
+    const textColor = options?.textColor ?? (
+        backgroundColor === 'white' ? 'black' :
+        backgroundColor === 'default' ? 'default' :
+        'white');
     const margin = options?.margin ?? 1;
     const spacing = options?.spacing ?? 2;
     const bg = COLOR_MAP[backgroundColor][1];
@@ -162,7 +165,10 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
     const datas: Readonly<ColoredDataSeries>[] = [];
 
     const backgroundColor = options?.backgroundColor ?? 'black';
-    const textColor = options?.textColor ?? (backgroundColor === 'white' ? 'black' : 'white');
+    const textColor = options?.textColor ?? (
+        backgroundColor === 'white' ? 'black' :
+        backgroundColor === 'default' ? 'default' :
+        'white');
     const textFG = COLOR_MAP[textColor][0];
     const defaultColors = DEFAULT_COLOR_SEQUENCE.slice();
     const colorIndex = defaultColors.findIndex(color => color === backgroundColor);
@@ -432,7 +438,8 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                 const item = datas[index];
                 const values = intValues[index];
                 const value = values[x];
-                const fg = COLOR_MAP[item.color][0];
+                const { color } = item;
+                const fg = COLOR_MAP[color][0];
                 const thisHSpace = index === 0 ? hSpace : '';
                 let yEndIndex = chartHeight - ((value / 8)|0) - ((intYZero / 8)|0);
                 if (yEndIndex < 0) {
@@ -465,7 +472,6 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                         }
                     }
                 } else if (value < 0) {
-                    const fgInv = COLOR_MAP[item.color][1];
                     for (; yIndex <= clampedYZeroIndex; ++ yIndex) {
                         buf[yIndex].push(thisHSpace, space);
                     }
@@ -477,6 +483,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                     if (yIndex < chartHeight) {
                         const subSteps = value % 8;
                         if (subSteps !== 0) {
+                            const fgInv = COLOR_MAP[color][1];
                             buf[yIndex ++].push(thisHSpace, bgInv, fgInv, VCHAR_MAP[8 + subSteps].repeat(barWidth), textFG, bg);
                         }
 
