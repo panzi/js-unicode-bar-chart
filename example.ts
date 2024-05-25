@@ -32,7 +32,6 @@ function main() {
     const redrawSleep = 1000/60;
     const xSize = 4;
     let horizontal = true;
-    const start = Date.now()
     const redraw = () => {
         const now = Date.now();
         const availWidth  = process.stdout.columns ?? 80;
@@ -75,13 +74,15 @@ function main() {
         const lines = unicodeBarChart(data, {
             yRange: [-1, 3],
             width: availWidth,
-            height: availHeight - data.length - 1,
+            height: availHeight - 2,
             orientation: horizontal ? 'horizontal' : 'vertical',
             //backgroundColor: 'white',
             //textColor: 'black',
         });
+        lines.push('');
+        lines.push(centerLine(message, availWidth));
 
-        process.stdout.write(CLEAR + lines.join('\n') + '\n\n' + centerLine(message, availWidth));
+        process.stdout.write(CLEAR + lines.join('\n'));
     };
 
     interval = setInterval(redraw, redrawSleep);

@@ -2,8 +2,10 @@ export type Orientation = 'horizontal'|'vertical';
 
 export interface BarChartOptions {
     yLabel?: boolean|((y: number) => string);
+    xLabel?: boolean|((x: number) => string);
     width?:  number;
     height?: number;
+    barWidth?: number;
     yRange?: [min: number, max: number];
     orientation?: Orientation;
     textColor?: Color;
@@ -85,139 +87,19 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
     const width  = options?.width  ?? 80;
     const height = options?.height ?? 40;
 
-    let lines: string[];
-    if (xSize === 0 || width <= 0 || height <= 0) {
-        lines = [];
-        const line = ' '.repeat(width);
-        for (let y = 0; y < height; ++ y) {
-            lines.push(line);
-        }
-        return lines;
-    }
-
-    const subCharHeight = height * 8;
-
-    // TODO: y-axis labels
-    const yLabel = options?.yLabel === true ? String : options?.yLabel || null;
-
     const orientation = options?.orientation ?? 'horizontal';
     const textWidth = options?.textWidth ?? getTextWidth;
-    const yRange = options?.yRange;
-
-    let yStart: number;
-    let yEnd: number;
-
-    if (yRange) {
-        [yStart, yEnd] = yRange;
-    } else {
-        yStart = yMin > 0 ? 0 : yMin;
-        yEnd   = yMax < 0 ? 0 : yMax;
-    }
-
-    const ySize = yEnd - yStart;
-    const yZero = -yStart;
 
     const bg = COLOR_MAP[backgroundColor][1];
     const bgInv = COLOR_MAP[backgroundColor][0];
-    const intValues: Int32Array[] = [];
 
-    if (orientation === 'horizontal') {
-        const intYZero = (subCharHeight * (yZero / ySize))|0;
-        const yZeroIndex = height - ((intYZero / 8)|0) - 1;
-        const clampedYZeroIndex = Math.min(Math.max(yZeroIndex, 0), height - 1);
+    let lines: string[];
 
-        for (const item of datas) {
-            const values = new Int32Array(xSize);
+    const footer: string[] = [];
 
-            for (let x = 0; x < xSize; ++ x) {
-                const y = item.data.length > x ? item.data[x] : 0;
-                const intY = subCharHeight * (y / ySize);
-                values[x] = intY < 0 ? Math.floor(intY) : Math.ceil(intY);
-            }
+    // TODO: add other stuff to footer
 
-            intValues.push(values);
-        }
-
-        const hSpaceWidth = Math.max(((width - (datas.length * xSize)) / (xSize + 1))|0, 0);
-        const hSpace = ' '.repeat(hSpaceWidth);
-        const buf: string[][] = [];
-        const endSpace = ' '.repeat(Math.max(width - (xSize * (datas.length + hSpaceWidth)), 0));
-
-        for (let y = 0; y < height; ++ y) {
-            buf.push([bg, textFG]);
-        }
-
-        for (let x = 0; x < xSize; ++ x) {
-            for (let index = 0; index < datas.length; ++ index) {
-                const item = datas[index];
-                const values = intValues[index];
-                const value = values[x];
-                const fg = COLOR_MAP[item.color][0];
-                const thisHSpace = index === 0 ? hSpace : '';
-                let yEndIndex = height - ((value / 8)|0) - ((intYZero / 8)|0);
-                if (yEndIndex < 0) {
-                    yEndIndex = 0;
-                } else if (yEndIndex > height) {
-                    yEndIndex = height;
-                }
-
-                let yIndex = 0;
-
-                if (value >= 0) {
-                    for (; yIndex < yEndIndex - 1; ++ yIndex) {
-                        buf[yIndex].push(thisHSpace, ' ');
-                    }
-
-                    if (yIndex < height) {
-                        const subSteps = value % 8;
-                        if (subSteps > 0) {
-                            buf[yIndex ++].push(thisHSpace, fg, VCHAR_MAP[subSteps], textFG);
-                        } else {
-                            buf[yIndex ++].push(thisHSpace, ' ');
-                        }
-
-                        for (; yIndex <= clampedYZeroIndex; ++ yIndex) {
-                            buf[yIndex].push(thisHSpace, fg, '█', textFG);
-                        }
-
-                        for (; yIndex < height; ++ yIndex) {
-                            buf[yIndex].push(thisHSpace, ' ');
-                        }
-                    }
-                } else if (value < 0) {
-                    const fgInv = COLOR_MAP[item.color][1];
-                    for (; yIndex <= clampedYZeroIndex; ++ yIndex) {
-                        buf[yIndex].push(thisHSpace, ' ');
-                    }
-
-                    for (; yIndex < yEndIndex; ++ yIndex) {
-                        buf[yIndex].push(thisHSpace, fg, '█', textFG);
-                    }
-
-                    if (yIndex < height) {
-                        const subSteps = value % 8;
-                        if (subSteps !== 0) {
-                            buf[yIndex ++].push(thisHSpace, bgInv, fgInv, VCHAR_MAP[8 + subSteps], textFG, bg);
-                        }
-
-                        for (; yIndex < height; ++ yIndex) {
-                            buf[yIndex].push(thisHSpace, ' ');
-                        }
-                    }
-                }
-            }
-        }
-
-        for (const line of buf) {
-            line.push(endSpace, NORMAL);
-        }
-
-        lines = buf.map(line => line.join(''));
-    } else { // vertical
-        throw new Error('not implemented');
-    }
-
-    lines.push(`${bg}${textFG}${' '.repeat(width)}${NORMAL}`);
+    footer.push(`${bg}${textFG}${' '.repeat(width)}${NORMAL}`);
     let lineWidth = 0;
     let buf: string[] = [];
     const lineStart = `${bg}${textFG} `;
@@ -234,7 +116,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
             } else {
                 if (buf.length) {
                     buf.push(' '.repeat(Math.max(width - lineWidth, 0)), NORMAL);
-                    lines.push(buf.join(''));
+                    footer.push(buf.join(''));
                     buf = [];
                 }
                 buf.push(lineStart, fg, label);
@@ -245,10 +127,144 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
 
     if (buf.length > 0) {
         buf.push(' '.repeat(Math.max(width - lineWidth, 0)), NORMAL);
-        lines.push(buf.join(''));
+        footer.push(buf.join(''));
     }
 
-    //if (1==1)process.exit(1)
+    const chartWidth = width; // TODO: minus y-axis labels
+    const chartHeight = height - footer.length; // TODO: minus x-axis labels
+
+    if (xSize === 0 || chartWidth <= 0 || chartHeight <= 0) {
+        lines = [];
+        const line = ' '.repeat(chartWidth);
+        for (let y = 0; y < chartHeight; ++ y) {
+            lines.push(line);
+        }
+        return lines;
+    }
+
+    const subCharHeight = chartHeight * 8;
+
+    // TODO: axis labels
+    const yLabel = options?.yLabel === true ? String : options?.yLabel || null;
+    const xLabel = options?.xLabel === true ? String : options?.xLabel || null;
+
+    const yRange = options?.yRange;
+
+    let yStart: number;
+    let yEnd: number;
+
+    if (yRange) {
+        [yStart, yEnd] = yRange;
+    } else {
+        yStart = yMin > 0 ? 0 : yMin;
+        yEnd   = yMax < 0 ? 0 : yMax;
+    }
+
+    const ySize = yEnd - yStart;
+    const yZero = -yStart;
+
+    const intValues: Int32Array[] = [];
+
+    if (orientation === 'horizontal') {
+        const intYZero = (subCharHeight * (yZero / ySize))|0;
+        const yZeroIndex = chartHeight - ((intYZero / 8)|0) - 1;
+        const clampedYZeroIndex = Math.min(Math.max(yZeroIndex, 0), chartHeight - 1);
+
+        for (const item of datas) {
+            const values = new Int32Array(xSize);
+
+            for (let x = 0; x < xSize; ++ x) {
+                const y = item.data.length > x ? item.data[x] : 0;
+                const intY = subCharHeight * (y / ySize);
+                values[x] = intY < 0 ? Math.floor(intY) : Math.ceil(intY);
+            }
+
+            intValues.push(values);
+        }
+
+        const barWidth = options?.barWidth ?? Math.max((chartWidth / (1 + ((datas.length + 1) * xSize)))|0, 1);
+        const hSpaceWidth = Math.max(((chartWidth - (datas.length * barWidth * xSize)) / (xSize + 1))|0, 0);
+        const hSpace = ' '.repeat(hSpaceWidth);
+        const buf: string[][] = [];
+        const endSpace = ' '.repeat(Math.max(chartWidth - (xSize * (datas.length * barWidth + hSpaceWidth)), 0));
+
+        for (let y = 0; y < chartHeight; ++ y) {
+            buf.push([bg, textFG]);
+        }
+
+        const full = '█'.repeat(barWidth);
+        const space = ' '.repeat(barWidth);
+        for (let x = 0; x < xSize; ++ x) {
+            for (let index = 0; index < datas.length; ++ index) {
+                const item = datas[index];
+                const values = intValues[index];
+                const value = values[x];
+                const fg = COLOR_MAP[item.color][0];
+                const thisHSpace = index === 0 ? hSpace : '';
+                let yEndIndex = chartHeight - ((value / 8)|0) - ((intYZero / 8)|0);
+                if (yEndIndex < 0) {
+                    yEndIndex = 0;
+                } else if (yEndIndex > chartHeight) {
+                    yEndIndex = chartHeight;
+                }
+
+                let yIndex = 0;
+
+                if (value >= 0) {
+                    for (; yIndex < yEndIndex - 1; ++ yIndex) {
+                        buf[yIndex].push(thisHSpace, space);
+                    }
+
+                    if (yIndex < chartHeight) {
+                        const subSteps = value % 8;
+                        if (subSteps > 0) {
+                            buf[yIndex ++].push(thisHSpace, fg, VCHAR_MAP[subSteps].repeat(barWidth), textFG);
+                        } else {
+                            buf[yIndex ++].push(thisHSpace, space);
+                        }
+
+                        for (; yIndex <= clampedYZeroIndex; ++ yIndex) {
+                            buf[yIndex].push(thisHSpace, fg, full, textFG);
+                        }
+
+                        for (; yIndex < chartHeight; ++ yIndex) {
+                            buf[yIndex].push(thisHSpace, space);
+                        }
+                    }
+                } else if (value < 0) {
+                    const fgInv = COLOR_MAP[item.color][1];
+                    for (; yIndex <= clampedYZeroIndex; ++ yIndex) {
+                        buf[yIndex].push(thisHSpace, space);
+                    }
+
+                    for (; yIndex < yEndIndex; ++ yIndex) {
+                        buf[yIndex].push(thisHSpace, fg, full, textFG);
+                    }
+
+                    if (yIndex < chartHeight) {
+                        const subSteps = value % 8;
+                        if (subSteps !== 0) {
+                            buf[yIndex ++].push(thisHSpace, bgInv, fgInv, VCHAR_MAP[8 + subSteps].repeat(barWidth), textFG, bg);
+                        }
+
+                        for (; yIndex < chartHeight; ++ yIndex) {
+                            buf[yIndex].push(thisHSpace, space);
+                        }
+                    }
+                }
+            }
+        }
+
+        for (const line of buf) {
+            line.push(endSpace, NORMAL);
+        }
+
+        lines = buf.map(line => line.join(''));
+    } else { // vertical
+        throw new Error('not implemented');
+    }
+
+    lines.push(...footer);
 
     return lines;
 }
