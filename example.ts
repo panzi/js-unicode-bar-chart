@@ -73,7 +73,9 @@ function main() {
 
         const lines = unicodeBarChart(data, {
             yRange: [-1, 3],
-            width: availWidth,
+            xLabel: x => `Year ${2001 + x + x * x}`,
+            yLabel: true,
+            width:  availWidth,
             height: availHeight - 2,
             orientation: horizontal ? 'horizontal' : 'vertical',
             //backgroundColor: 'white',

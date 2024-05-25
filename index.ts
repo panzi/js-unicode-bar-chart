@@ -37,8 +37,8 @@ export function isNumberArray(value: unknown): value is NumberArray {
 export interface WrapColoredTextOptions {
     width?: number;
     textWidth?: (text: string) => number;
-    backgroundColor?: Color;
     textColor?: Color;
+    backgroundColor?: Color;
     margin?: number;
     spacing?: number;
 }
@@ -245,8 +245,6 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
         return lines;
     }
 
-    const subCharHeight = chartHeight * 8;
-
     // TODO: axis labels
     const yLabel = options?.yLabel === true ? String : options?.yLabel || null;
     const xLabel = options?.xLabel === true ? String : options?.xLabel || null;
@@ -269,6 +267,83 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
     const intValues: Int32Array[] = [];
 
     if (orientation === 'horizontal') {
+        const barWidth = options?.barWidth ?? Math.max((chartWidth / (1 + ((datas.length + 1) * xSize)))|0, 1);
+        const hSpaceWidth = Math.max(((chartWidth - (datas.length * barWidth * xSize)) / (xSize + 1))|0, 0);
+        const hSpace = ' '.repeat(hSpaceWidth);
+        const endSpace = ' '.repeat(Math.max(chartWidth - (xSize * (datas.length * barWidth + hSpaceWidth)), 0));
+
+        if (xLabel) {
+            const xLabels: [label: string, labelWidth: number][] = [];
+            let maxActualLabelWidth = 0;
+            for (let x = 0; x < xSize; ++ x) {
+                const label = xLabel(x);
+                const labelWidth = textWidth(label);
+                xLabels.push([label, labelWidth]);
+                if (labelWidth > maxActualLabelWidth) {
+                    maxActualLabelWidth = labelWidth;
+                }
+            }
+
+            const maxLabelWidth = barWidth * datas.length + hSpaceWidth;
+            let lineWidth = Math.ceil(hSpaceWidth / 2);
+            const line: string[] = [bg, textFG, ' '.repeat(lineWidth)];
+            const oldFooter = footer.splice(0, footer.length);
+
+            if (maxActualLabelWidth <= maxLabelWidth - 2) {
+                for (const [label, labelWidth] of xLabels) {
+                    const space = maxLabelWidth - labelWidth;
+                    const lpad = space >> 1;
+                    const rpad = space - lpad;
+                    line.push(' '.repeat(lpad), label, ' '.repeat(rpad));
+                    lineWidth += maxLabelWidth;
+                }
+
+                line.push(' '.repeat(width - lineWidth), NORMAL);
+                footer.push(line.join(''));
+            } else {
+                for (let x = 0; x < xSize; ++ x) {
+                    const footnote = String(x + 1);
+                    const space = maxLabelWidth - textWidth(footnote);
+                    const lpad = space >> 1;
+                    const rpad = space - lpad;
+                    line.push(' '.repeat(lpad), footnote, ' '.repeat(rpad));
+                    lineWidth += maxLabelWidth;
+                }
+
+                line.push(' '.repeat(width - lineWidth), NORMAL);
+                footer.push(line.join(''));
+
+                footer.push(`${bg}${textFG}${' '.repeat(width)}${NORMAL}`);
+                footer.push(...wrapColoredText(xLabels.map(([label], index) => `[${index + 1}] ${label}`), {
+                    width,
+                    textWidth,
+                    textColor,
+                    backgroundColor,
+                }));
+            }
+
+            footer.push(...oldFooter);
+        }
+
+        const chartHeight = height - footer.length;
+
+        if (chartHeight <= 0) {
+            lines = [];
+            const line = ' '.repeat(chartWidth);
+            if (footer.length < height) {
+                for (let y = 0; y < chartHeight; ++ y) {
+                    lines.push(line);
+                }
+                lines.push(...footer);
+            } else {
+                for (let y = 0; y < height; ++ y) {
+                    lines.push(line);
+                }
+            }
+            return lines;
+        }
+
+        const subCharHeight = chartHeight * 8;
         const intYZero = (subCharHeight * (yZero / ySize))|0;
         const yZeroIndex = chartHeight - ((intYZero / 8)|0) - 1;
         const clampedYZeroIndex = Math.min(Math.max(yZeroIndex, 0), chartHeight - 1);
@@ -285,12 +360,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
             intValues.push(values);
         }
 
-        const barWidth = options?.barWidth ?? Math.max((chartWidth / (1 + ((datas.length + 1) * xSize)))|0, 1);
-        const hSpaceWidth = Math.max(((chartWidth - (datas.length * barWidth * xSize)) / (xSize + 1))|0, 0);
-        const hSpace = ' '.repeat(hSpaceWidth);
         const buf: string[][] = [];
-        const endSpace = ' '.repeat(Math.max(chartWidth - (xSize * (datas.length * barWidth + hSpaceWidth)), 0));
-
         for (let y = 0; y < chartHeight; ++ y) {
             buf.push([bg, textFG]);
         }
