@@ -456,11 +456,13 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                     }
 
                     if (yIndex < chartHeight) {
-                        const subSteps = value % 8;
-                        if (subSteps > 0) {
-                            buf[yIndex ++].push(thisHSpace, fg, VCHAR_MAP[subSteps].repeat(barWidth), textFG);
-                        } else {
-                            buf[yIndex ++].push(thisHSpace, space);
+                        if (yIndex === yEndIndex - 1) {
+                            const subSteps = value % 8;
+                            if (subSteps !== 0) {
+                                buf[yIndex ++].push(thisHSpace, fg, VCHAR_MAP[subSteps].repeat(barWidth), textFG);
+                            } else {
+                                buf[yIndex ++].push(thisHSpace, space);
+                            }
                         }
 
                         for (; yIndex <= clampedYZeroIndex; ++ yIndex) {
@@ -561,7 +563,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
 
                 const line: string[] = [bg];
 
-                let yIndex = 0;
+                let yIndex = chartWidth - 1;
 
                 if (index === 0) {
                     for (let x = 0; x < vSpaceWidth; ++ x) {
@@ -569,62 +571,65 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                     }
                 }
 
-                // FIXME: this is inverted! and other bugs!
                 if (value >= 0) {
-                    if (yIndex < yEndIndex - 1) {
-                        line.push(textFG, ' '.repeat((yEndIndex - 1) - yIndex));
-                        yIndex = yEndIndex - 1;
+                    if (yIndex > clampedYZeroIndex) {
+                        line.push(textFG, ' '.repeat(yIndex - clampedYZeroIndex));
+                        yIndex = clampedYZeroIndex;
                     }
 
-                    if (yIndex < chartWidth) {
-                        const subSteps = value % 8;
-                        if (subSteps > 0) {
-                            const fgInv = COLOR_MAP[color][1];
-                            line.push(bgInv, fgInv, HCHAR_MAP[8 + subSteps], bg, fg);
-                        } else {
-                            line.push(' ', fg);
-                        }
-                        ++ yIndex;
+                    if (yIndex >= yEndIndex) {
+                        line.push(fg, '█'.repeat(yIndex - yEndIndex + 1));
+                        yIndex = yEndIndex - 1;
+                    } else {
+                        line.push(fg);
+                    }
 
-                        if (yIndex <= clampedYZeroIndex) {
-                            line.push('█'.repeat(clampedYZeroIndex - yIndex + 1));
-                            yIndex = clampedYZeroIndex + 1;
+                    if (yIndex >= 0) {
+                        if (yIndex === yEndIndex - 1) {
+                            const subSteps = value % 8;
+                            if (subSteps !== 0) {
+                                line.push(HCHAR_MAP[subSteps]);
+                                -- yIndex;
+                            }
                         }
 
                         line.push(textFG);
 
-                        if (yIndex < chartWidth) {
-                            line.push(' '.repeat(chartWidth - yIndex));
-                            yIndex = chartWidth;
+                        if (yIndex >= 0) {
+                            line.push(' '.repeat(yIndex));
                         }
                     } else {
                         line.push(textFG);
                     }
                 } else if (value < 0) {
-                    if (yIndex <= clampedYZeroIndex) {
-                        line.push(textFG, ' '.repeat(clampedYZeroIndex - yIndex + 1));
-                        yIndex = clampedYZeroIndex + 1;
-                    }
-
-                    if (yIndex < yEndIndex) {
-                        line.push(fg, '█'.repeat(yEndIndex - yIndex));
+                    if (yIndex > yEndIndex) {
+                        line.push(textFG, ' '.repeat(yIndex - yEndIndex));
                         yIndex = yEndIndex;
-                    } else {
-                        line.push(fg);
                     }
 
-                    if (yIndex < chartWidth) {
-                        const subSteps = value % 8;
-                        if (subSteps !== 0) {
-                            line.push(HCHAR_MAP[subSteps]);
-                            ++ yIndex;
+                    if (yIndex >= 0) {
+                        if (yIndex === yEndIndex) {
+                            const subSteps = value % 8;
+                            if (subSteps !== 0) {
+                                const fgInv = COLOR_MAP[color][1];
+                                line.push(bgInv, fgInv, HCHAR_MAP[8 + subSteps], bg, fg);
+                            } else {
+                                line.push(' ', fg);
+                            }
+                            -- yIndex;
+                        } else {
+                            line.push(fg);
+                        }
+
+                        if (yIndex > clampedYZeroIndex) {
+                            line.push('█'.repeat(yIndex - clampedYZeroIndex));
+                            yIndex = clampedYZeroIndex;
                         }
 
                         line.push(textFG);
 
-                        if (yIndex < chartWidth) {
-                            line.push(' '.repeat(chartWidth - yIndex))
-                            yIndex = chartWidth;
+                        if (yIndex >= 0) {
+                            line.push(' '.repeat(yIndex));
                         }
                     } else {
                         line.push(textFG);
