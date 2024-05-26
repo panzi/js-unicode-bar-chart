@@ -827,7 +827,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                         line.push(textFG);
 
                         if (yIndex >= 0) {
-                            line.push(' '.repeat(yIndex));
+                            line.push(' '.repeat(yIndex + 1));
                         }
                     } else {
                         line.push(textFG);
@@ -860,7 +860,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                         line.push(textFG);
 
                         if (yIndex >= 0) {
-                            line.push(' '.repeat(yIndex));
+                            line.push(' '.repeat(yIndex + 1));
                         }
                     } else {
                         line.push(textFG);
