@@ -160,6 +160,102 @@ export function wrapColoredText(items: ReadonlyArray<readonly [text?: string|und
     return lines;
 }
 
+function alignInternal(text: string, textWidth: number, width: number, align: 'left'|'right'|'center'): string {
+    const rem = Math.max(width - textWidth, 0);
+    if (align === 'center') {
+        const rpad = rem >> 1;
+        const lpad = rem - rpad;
+        return `${' '.repeat(lpad)}${text}${' '.repeat(rpad)}`;
+    } else if (align === 'left') {
+        return text + ' '.repeat(rem);
+    } else {
+        return ' '.repeat(rem) + text;
+    }
+}
+
+export function wrapText(text: string, width: number, align: 'left'|'right'|'center'='left', margin: number=0, textWidth?: (text: string) => number): { lines: string[], maxWidth: number } {
+    textWidth ??= getTextWidth;
+    const lines: string[] = [];
+    const marginSpace = ' '.repeat(margin);
+    let maxWidth = width;
+
+    let line: string[] = [marginSpace];
+    let lineWidth = margin;
+    const spacePattern = /[ \t\r\n\v\u{2000}-\u{200B}\u{205F}\u{3000}]+|\n/gu;
+    let prevIndex = 0;
+    let prevSpaceWidth = 0;
+    while (prevIndex < text.length) {
+        const match = spacePattern.exec(text);
+        let space: string;
+        let spaceIndex: number;
+        let spaceWidth: number;
+
+        if (match) {
+            space = match[0];
+            spaceIndex = spacePattern.lastIndex - space.length;
+            spaceWidth = textWidth(space);
+        } else {
+            space = '';
+            spaceIndex = text.length;
+            spaceWidth = 0;
+        }
+
+        const word = text.slice(prevIndex, spaceIndex);
+        const wordWidth = textWidth(word);
+        let nextLineWidth = lineWidth + wordWidth;
+
+        if (nextLineWidth <= width - margin || lineWidth <= margin) {
+            line.push(word);
+            lineWidth = nextLineWidth;
+        } else {
+            if (lineWidth > margin) {
+                line.push(marginSpace);
+                lineWidth += margin;
+                if (prevSpaceWidth > 0) {
+                    lineWidth -= prevSpaceWidth;
+                    line.pop();
+                }
+                lines.push(alignInternal(line.join(''), lineWidth, width, align));
+                line = [marginSpace];
+                if (lineWidth > maxWidth) {
+                    maxWidth = lineWidth;
+                }
+            }
+            line.push(word);
+            lineWidth = margin + wordWidth;
+        }
+
+        nextLineWidth = lineWidth + spaceWidth;
+        if (nextLineWidth < width - margin && space !== '\n') {
+            line.push(space);
+            lineWidth = nextLineWidth;
+            prevSpaceWidth = spaceWidth;
+        } else {
+            line.push(marginSpace);
+            lineWidth += margin;
+            lines.push(alignInternal(line.join(''), lineWidth, width, align));
+            if (lineWidth > maxWidth) {
+                maxWidth = lineWidth;
+            }
+            line = [marginSpace];
+            lineWidth = margin;
+            prevSpaceWidth = 0;
+        }
+
+        prevIndex = spaceIndex + space.length;
+    }
+
+    if (lineWidth > margin) {
+        line.push(marginSpace);
+        lineWidth += margin;
+        lines.push(alignInternal(line.join(''), lineWidth, width, align));
+        if (lineWidth > maxWidth) {
+            maxWidth = lineWidth;
+        }
+    }
+
+    return { lines, maxWidth };
+}
 
 export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], options?: BarChartOptions): string[] {
     const datas: Readonly<ColoredDataSeries>[] = [];
@@ -314,35 +410,46 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
         const header: string[] = [];
 
         if (xLabel) {
-            const xLabels: [label: string, labelWidth: number][] = [];
+            const maxLabelWidth = barWidth * datas.length + hSpaceWidth;
+            const xLabels: [label: string, wrapped: string[]][] = [];
             let maxActualLabelWidth = 0;
+            let maxLabelLines = 0;
             for (let x = 0; x < xSize; ++ x) {
                 const label = xLabel(x);
-                const labelWidth = textWidth(label);
-                xLabels.push([label, labelWidth]);
-                if (labelWidth > maxActualLabelWidth) {
-                    maxActualLabelWidth = labelWidth;
+                const { maxWidth, lines } = wrapText(label, maxLabelWidth, 'center', 1, textWidth);
+                xLabels.push([label, lines]);
+                if (maxWidth > maxActualLabelWidth) {
+                    maxActualLabelWidth = maxWidth;
+                }
+                const lineCount = lines.length;
+                if (lineCount > maxLabelLines) {
+                    maxLabelLines = lineCount;
                 }
             }
 
-            const maxLabelWidth = barWidth * datas.length + hSpaceWidth;
-            let lineWidth = Math.ceil(hSpaceWidth / 2);
-            const line: string[] = [bg, textFG, ' '.repeat(lineWidth)];
             const oldFooter = footer.splice(0, footer.length);
             const xLabelSection = xLabelPosition === 'before' ? header : footer;
+            const lpadWidth = Math.ceil(hSpaceWidth / 2);
+            const lpad = ' '.repeat(lpadWidth);
 
-            if (maxActualLabelWidth <= maxLabelWidth - 2) {
-                for (const [label, labelWidth] of xLabels) {
-                    const space = maxLabelWidth - labelWidth;
-                    const lpad = space >> 1;
-                    const rpad = space - lpad;
-                    line.push(' '.repeat(lpad), label, ' '.repeat(rpad));
-                    lineWidth += maxLabelWidth;
+            if (maxActualLabelWidth <= maxLabelWidth) {
+                const emptyLabel = ' '.repeat(maxLabelWidth);
+                const rpad = ' '.repeat(hSpaceWidth - lpadWidth);
+                for (let index = 0; index < maxLabelLines; ++ index) {
+                    const line: string[] = [bg, textFG, lpad];
+                    for (const [_label, wrapped] of xLabels) {
+                        const label = index < wrapped.length ?
+                            wrapped[index] :
+                            emptyLabel;
+                        line.push(label);
+                    }
+                    line.push(rpad, NORMAL);
+                    xLabelSection.push(line.join(''));
                 }
-
-                line.push(' '.repeat(width - lineWidth), NORMAL);
-                xLabelSection.push(line.join(''));
             } else {
+                const line: string[] = [bg, textFG, lpad];
+                let lineWidth = lpadWidth;
+
                 for (let x = 0; x < xSize; ++ x) {
                     const footnote = String(x + 1);
                     const space = maxLabelWidth - textWidth(footnote);
