@@ -515,7 +515,130 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
             lines.push(line.join(''));
         }
     } else { // vertical
-        throw new Error('not implemented');
+        let chartHeight = height - footer.length;
+
+        // TODO: labels
+
+        const barWidth = options?.barWidth ?? Math.max((chartHeight / (1 + ((datas.length + 1) * xSize)))|0, 1);
+        const vSpaceWidth = Math.max(((chartHeight - (datas.length * barWidth * xSize)) / (xSize + 1))|0, 0);
+        const endLines = Math.max(chartHeight - (xSize * (datas.length * barWidth + vSpaceWidth)), 0);
+
+        // TODO: more labels
+
+        const subCharWidth = chartWidth * 8;
+        const intYZero = (subCharWidth * (yZero / ySize))|0;
+        const yZeroIndex = chartWidth - ((intYZero / 8)|0) - 1;
+        const clampedYZeroIndex = Math.min(Math.max(yZeroIndex, 0), chartWidth - 1);
+
+        for (const item of datas) {
+            const values = new Int32Array(xSize);
+
+            for (let x = 0; x < xSize; ++ x) {
+                const y = item.data.length > x ? item.data[x] : 0;
+                const intY = subCharWidth * (y / ySize);
+                values[x] = intY < 0 ? Math.floor(intY) : Math.ceil(intY);
+            }
+
+            intValues.push(values);
+        }
+
+        // TODO: more labels
+
+        const emptyLine = `${bg}${textFG}${' '.repeat(chartWidth)}`;
+        for (let x = 0; x < xSize; ++ x) {
+            for (let index = 0; index < datas.length; ++ index) {
+                const item = datas[index];
+                const values = intValues[index];
+                const value = values[x];
+                const { color } = item;
+                const fg = COLOR_MAP[color][0];
+                let yEndIndex = chartWidth - ((value / 8)|0) - ((intYZero / 8)|0);
+                if (yEndIndex < 0) {
+                    yEndIndex = 0;
+                } else if (yEndIndex > chartWidth) {
+                    yEndIndex = chartWidth;
+                }
+
+                const line: string[] = [bg];
+
+                let yIndex = 0;
+
+                if (index === 0) {
+                    for (let x = 0; x < vSpaceWidth; ++ x) {
+                        lines.push(emptyLine);
+                    }
+                }
+
+                // FIXME: this is inverted! and other bugs!
+                if (value >= 0) {
+                    if (yIndex < yEndIndex - 1) {
+                        line.push(textFG, ' '.repeat((yEndIndex - 1) - yIndex));
+                        yIndex = yEndIndex - 1;
+                    }
+
+                    if (yIndex < chartWidth) {
+                        const subSteps = value % 8;
+                        if (subSteps > 0) {
+                            const fgInv = COLOR_MAP[color][1];
+                            line.push(bgInv, fgInv, HCHAR_MAP[8 + subSteps], bg, fg);
+                        } else {
+                            line.push(' ', fg);
+                        }
+                        ++ yIndex;
+
+                        if (yIndex <= clampedYZeroIndex) {
+                            line.push('█'.repeat(clampedYZeroIndex - yIndex + 1));
+                            yIndex = clampedYZeroIndex + 1;
+                        }
+
+                        line.push(textFG);
+
+                        if (yIndex < chartWidth) {
+                            line.push(' '.repeat(chartWidth - yIndex));
+                            yIndex = chartWidth;
+                        }
+                    } else {
+                        line.push(textFG);
+                    }
+                } else if (value < 0) {
+                    if (yIndex <= clampedYZeroIndex) {
+                        line.push(textFG, ' '.repeat(clampedYZeroIndex - yIndex + 1));
+                        yIndex = clampedYZeroIndex + 1;
+                    }
+
+                    if (yIndex < yEndIndex) {
+                        line.push(fg, '█'.repeat(yEndIndex - yIndex));
+                        yIndex = yEndIndex;
+                    } else {
+                        line.push(fg);
+                    }
+
+                    if (yIndex < chartWidth) {
+                        const subSteps = value % 8;
+                        if (subSteps !== 0) {
+                            line.push(HCHAR_MAP[subSteps]);
+                            ++ yIndex;
+                        }
+
+                        line.push(textFG);
+
+                        if (yIndex < chartWidth) {
+                            line.push(' '.repeat(chartWidth - yIndex))
+                            yIndex = chartWidth;
+                        }
+                    } else {
+                        line.push(textFG);
+                    }
+                }
+
+                const lineStr = line.join('');
+                for (let x = 0; x < barWidth; ++ x) {
+                    lines.push(lineStr);
+                }
+            }
+        }
+
+        // TODO
     }
 
     lines.push(...footer);
