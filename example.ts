@@ -31,7 +31,7 @@ function main() {
     const TAU = 2 * Math.PI;
     const redrawSleep = 1000/60;
     const xSize = 4;
-    let horizontal = true;
+    let horizontal = false;
     const redraw = () => {
         const now = Date.now() * 0.1;
         const availWidth  = process.stdout.columns ?? 80;
