@@ -639,8 +639,8 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
 
         // TODO: labels
 
-        const barWidth = options?.barWidth ?? Math.max((chartHeight / (1 + ((datas.length + 1) * xSize)))|0, 1);
-        const vSpaceWidth = Math.max(((chartHeight - (datas.length * barWidth * xSize)) / (xSize + 1))|0, 0);
+        let barWidth = options?.barWidth ?? Math.max((chartHeight / (1 + ((datas.length + 1) * xSize)))|0, 1);
+        let vSpaceWidth = Math.max(((chartHeight - (datas.length * barWidth * xSize)) / (xSize + 1))|0, 0);
         // TODO: suffix when label should be after!!
         const prefix: string[] = [];
 
@@ -672,11 +672,10 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                 }
             }
 
-            const itemLineCount = datas.length * barWidth;
-            const vLabelSpace = itemLineCount + Math.max(vSpaceWidth - 2, 0);
-            const fullVLabelSpace = itemLineCount + vSpaceWidth;
-            const linesBefore = Math.ceil(vSpaceWidth / 2);
+            const vLabelSpace = datas.length * barWidth + Math.max(vSpaceWidth - 2, 0);
             if (maxLabelLines <= vLabelSpace && maxActualLabelWidth <= maxLabelWidth) {
+                const fullVLabelSpace = datas.length * barWidth + vSpaceWidth;
+                const linesBefore = vSpaceWidth >> 1;
                 const emptyPrefix = `${bg}${textFG}${' '.repeat(maxLabelWidth)}`;
                 while (prefix.length < linesBefore) {
                     prefix.push(emptyPrefix);
@@ -701,6 +700,23 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
 
                 chartWidth -= maxLabelWidth;
             } else {
+                footer.push(`${bg}${textFG}${' '.repeat(width)}${NORMAL}`);
+                footer.push(...wrapColoredText(xLabels.map(([label], index) => `[${index + 1}] ${label}`), {
+                    width,
+                    textWidth,
+                    textColor,
+                    backgroundColor,
+                }));
+
+                // chart height changed, so we need to recalculate some stuff
+                chartHeight = height - footer.length;
+
+                barWidth = options?.barWidth ?? Math.max((chartHeight / (1 + ((datas.length + 1) * xSize)))|0, 1);
+                vSpaceWidth = Math.max(((chartHeight - (datas.length * barWidth * xSize)) / (xSize + 1))|0, 0);
+
+                const fullVLabelSpace = datas.length * barWidth + vSpaceWidth;
+                const linesBefore = vSpaceWidth >> 1;
+
                 const shortLabels: [label: string, labelWidth: number][] = [];
                 for (let x = 0; x < xSize; ++ x) {
                     const label = String(x + 1);
@@ -731,17 +747,6 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                 }
 
                 chartWidth -= maxLabelWidth;
-
-                footer.push(`${bg}${textFG}${' '.repeat(width)}${NORMAL}`);
-                footer.push(...wrapColoredText(xLabels.map(([label], index) => `[${index + 1}] ${label}`), {
-                    width,
-                    textWidth,
-                    textColor,
-                    backgroundColor,
-                }));
-
-                // XXX: layout loop!?
-                chartHeight = height - footer.length;
             }
         } else {
             while (prefix.length < chartHeight) {
