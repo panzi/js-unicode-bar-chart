@@ -11,3 +11,10 @@ Horizontally these symbols are used:
 
 And vertically these symbols are used:
 `▁` `▂` `▃` `▄` `▅` `▆` `▇` `█`
+
+Demo
+----
+
+[Demo Video](https://www.youtube.com/watch?v=DCGuczlimZs)
+
+[![Demo Video](screenshot.png)](https://www.youtube.com/watch?v=DCGuczlimZs)
