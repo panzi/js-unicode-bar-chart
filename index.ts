@@ -640,11 +640,10 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
         let chartHeight = height - footer.length;
         let chartWidth = width;
 
-        // TODO: labels
+        // TODO: y-axis label
 
         let barWidth = options?.barWidth ?? Math.max((chartHeight / (1 + ((datas.length + 1) * xSize)))|0, 1);
         let vSpaceWidth = Math.max(((chartHeight - (datas.length * barWidth * xSize)) / (xSize + 1))|0, 0);
-        // TODO: suffix when label should be after!!
         const prefix: string[] = [];
         const suffix: string[] = [];
 
@@ -771,8 +770,6 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
             suffix.push('');
         }
 
-        // TODO: more labels
-
         const subCharWidth = chartWidth * 8;
         const intYZero = (subCharWidth * (yZero / ySize))|0;
         const yZeroIndex = chartWidth - ((intYZero / 8)|0) - 1;
@@ -789,8 +786,6 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
 
             intValues.push(values);
         }
-
-        // TODO: more labels
 
         const emptyLine = ' '.repeat(chartWidth);
         let lineIndex = 0;
@@ -895,8 +890,6 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
         for (; lineIndex < chartHeight; ++ lineIndex) {
             lines.push(`${bg}${textFG}${prefix[lineIndex]}${emptyLine}${suffix[lineIndex]}${NORMAL}`);
         }
-
-        // TODO
     }
 
     lines.push(...footer);
