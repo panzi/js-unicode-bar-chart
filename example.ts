@@ -22,7 +22,7 @@ function makeSeries(xSize: number, f: (x: number) => number): Float64Array {
 }
 
 function main() {
-    const message = 'Press Control+C to exit.';
+    const message = 'Press Escape to exit.';
 
     process.stdout.write('\x1B[?25l');
 
@@ -74,7 +74,6 @@ function main() {
         const lines = unicodeBarChart(data, {
             yRange: [-1, 2],
             xLabel: x => `Year ${2001 + x + x * x}`,
-            //xLabel: x => `Year ${2001 + x + x * x} adfdsfgsdgsdfgksldfkösdkfsdfklsdkflsdkf sadfsdf dsfsdfsd fsdf sdgsdgsdgsdg sdgsd`,
             yLabel: y => y.toFixed(3),
             yLabelPosition: 'after',
             xLabelPosition: 'before',
@@ -97,7 +96,19 @@ function main() {
             clearInterval(interval);
             interval = null;
         }
+        process.stdin.off('data', onInput);
+        process.stdin.destroy();
     };
+
+    const onInput = (data: Buffer) => {
+        if (data.includes(0x1B) || data.includes(0x71)) {
+            shutdown();
+        }
+    };
+
+    process.stdin.setRawMode(true);
+    process.stdin.setNoDelay(true);
+    process.stdin.on('data', onInput);
 
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
