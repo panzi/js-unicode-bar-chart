@@ -363,8 +363,6 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
 
     const xLabel = options?.xLabel === true ? String : options?.xLabel || null;
     const yLabel = options?.yLabel === true ? String : options?.yLabel || null;
-    const xLabelPosition = options?.xLabelPosition ?? 'after';
-    const yLabelPosition = options?.yLabelPosition ?? 'after';
 
     const yRange = options?.yRange;
 
@@ -384,6 +382,8 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
     const intValues: Int32Array[] = [];
 
     if (orientation === 'horizontal') {
+        const xLabelPosition = options?.xLabelPosition ?? 'after';
+        const yLabelPosition = options?.yLabelPosition ?? 'after';
         const yLabels: [y: number, label: string, labelWidth: number][] = [];
         let chartWidth = width;
         let maxYLabelWidth = 0;
@@ -634,6 +634,9 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
             lines.push(line.join(''));
         }
     } else { // vertical
+        const xLabelPosition = options?.xLabelPosition ?? 'before';
+        const yLabelPosition = options?.yLabelPosition ?? 'before';
+
         let chartHeight = height - footer.length;
         let chartWidth = width;
 
@@ -643,21 +646,27 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
         let vSpaceWidth = Math.max(((chartHeight - (datas.length * barWidth * xSize)) / (xSize + 1))|0, 0);
         // TODO: suffix when label should be after!!
         const prefix: string[] = [];
+        const suffix: string[] = [];
 
         if (xLabel) {
             let maxActualLabelWidth = 0;
             let maxLabelLines = 0;
             const labels: string[] = [];
             let maxWordWidth = 0;
+            let maxSingleLineLabelWidth = 0;
             for (let x = 0; x < xSize; ++ x) {
                 const label = xLabel(x);
                 const thisMaxWordWidth = getMaxWordWidth(label, textWidth);
                 if (thisMaxWordWidth > maxWordWidth) {
                     maxWordWidth = thisMaxWordWidth;
                 }
+                const labelWidth = textWidth(label);
+                if (labelWidth > maxSingleLineLabelWidth) {
+                    maxSingleLineLabelWidth = labelWidth;
+                }
                 labels.push(label);
             }
-            const maxLabelWidth = Math.min(Math.max(maxWordWidth, 16), width >> 1);
+            const maxLabelWidth = Math.min(Math.max(maxWordWidth, Math.min(16, maxSingleLineLabelWidth)), width >> 1);
             const align = xLabelPosition === 'before' ? 'right' : 'left';
             const xLabels: [label: string, wrapped: string[]][] = [];
             for (const label of labels) {
@@ -672,30 +681,34 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                 }
             }
 
+            const xLabelSection = xLabelPosition === 'before' ? prefix : suffix;
+
             const vLabelSpace = datas.length * barWidth + Math.max(vSpaceWidth - 2, 0);
             if (maxLabelLines <= vLabelSpace && maxActualLabelWidth <= maxLabelWidth) {
                 const fullVLabelSpace = datas.length * barWidth + vSpaceWidth;
                 const linesBefore = vSpaceWidth >> 1;
-                const emptyPrefix = `${bg}${textFG}${' '.repeat(maxLabelWidth)}`;
-                while (prefix.length < linesBefore) {
-                    prefix.push(emptyPrefix);
+                const emptyLine = ' '.repeat(maxLabelWidth);
+                while (xLabelSection.length < linesBefore) {
+                    xLabelSection.push(emptyLine);
                 }
+
                 for (const [_, labelLines] of xLabels) {
                     const rem = fullVLabelSpace - labelLines.length;
                     const after = rem >> 1;
                     const before = rem - after;
                     for (let y = 0; y < before; ++ y) {
-                        prefix.push(emptyPrefix);
+                        xLabelSection.push(emptyLine);
                     }
                     for (const line of labelLines) {
-                        prefix.push(`${bg}${textFG}${line}`);
+                        xLabelSection.push(line);
                     }
                     for (let y = 0; y < after; ++ y) {
-                        prefix.push(emptyPrefix);
+                        xLabelSection.push(emptyLine);
                     }
                 }
-                while (prefix.length < chartHeight) {
-                    prefix.push(emptyPrefix);
+
+                while (xLabelSection.length < chartHeight) {
+                    xLabelSection.push(emptyLine);
                 }
 
                 chartWidth -= maxLabelWidth;
@@ -724,9 +737,9 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                     shortLabels.push([label, labelWidth]);
                 }
                 const maxLabelWidth = xSize > 0 ? shortLabels[xSize - 1][1] : 0;
-                const emptyPrefix = `${bg}${textFG}${' '.repeat(maxLabelWidth)}`;
-                while (prefix.length < linesBefore) {
-                    prefix.push(emptyPrefix);
+                const emptyLine = ' '.repeat(maxLabelWidth);
+                while (xLabelSection.length < linesBefore) {
+                    xLabelSection.push(emptyLine);
                 }
 
                 for (const [label, labelWidth] of shortLabels) {
@@ -734,24 +747,28 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                     const after = rem >> 1;
                     const before = rem - after;
                     for (let y = 0; y < before; ++ y) {
-                        prefix.push(emptyPrefix);
+                        xLabelSection.push(emptyLine);
                     }
-                    prefix.push(`${bg}${textFG}${alignInternal(label, labelWidth, maxLabelWidth, align)}`);
+                    xLabelSection.push(alignInternal(label, labelWidth, maxLabelWidth, align));
                     for (let y = 0; y < after; ++ y) {
-                        prefix.push(emptyPrefix);
+                        xLabelSection.push(emptyLine);
                     }
                 }
 
-                while (prefix.length < chartHeight) {
-                    prefix.push(emptyPrefix);
+                while (xLabelSection.length < chartHeight) {
+                    xLabelSection.push(emptyLine);
                 }
 
                 chartWidth -= maxLabelWidth;
             }
-        } else {
-            while (prefix.length < chartHeight) {
-                prefix.push(bg);
-            }
+        }
+
+        while (prefix.length < chartHeight) {
+            prefix.push('');
+        }
+
+        while (suffix.length < chartHeight) {
+            suffix.push('');
         }
 
         // TODO: more labels
@@ -775,7 +792,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
 
         // TODO: more labels
 
-        const emptyLine = `${bg}${textFG}${' '.repeat(chartWidth)}${NORMAL}`;
+        const emptyLine = ' '.repeat(chartWidth);
         let lineIndex = 0;
         for (let x = 0; x < xSize; ++ x) {
             for (let index = 0; index < datas.length; ++ index) {
@@ -798,7 +815,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                 if (index === 0) {
                     const endSpaceIndex = lineIndex + vSpaceWidth;
                     for (; lineIndex < endSpaceIndex; ++ lineIndex) {
-                        lines.push(prefix[lineIndex] + emptyLine);
+                        lines.push(`${bg}${textFG}${prefix[lineIndex]}${emptyLine}${suffix[lineIndex]}${NORMAL}`);
                     }
                 }
 
@@ -867,17 +884,16 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                     }
                 }
 
-                line.push(NORMAL);
                 const lineStr = line.join('');
                 const barEndIndex = lineIndex + barWidth;
                 for (; lineIndex < barEndIndex; ++ lineIndex) {
-                    lines.push(prefix[lineIndex] + lineStr);
+                    lines.push(`${bg}${textFG}${prefix[lineIndex]}${lineStr}${suffix[lineIndex]}${NORMAL}`);
                 }
             }
         }
 
         for (; lineIndex < chartHeight; ++ lineIndex) {
-            lines.push(prefix[lineIndex] + emptyLine);
+            lines.push(`${bg}${textFG}${prefix[lineIndex]}${emptyLine}${suffix[lineIndex]}${NORMAL}`);
         }
 
         // TODO
