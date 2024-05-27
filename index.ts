@@ -469,8 +469,8 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                     lineWidth += maxLabelWidth;
                 }
 
-                xLabelSection.push(' '.repeat(width - lineWidth), NORMAL);
-                footer.push(line.join(''));
+                line.push(' '.repeat(width - lineWidth), NORMAL);
+                xLabelSection.push(line.join(''));
 
                 footer.push(`${bg}${textFG}${' '.repeat(width)}${NORMAL}`);
                 footer.push(...wrapColoredText(xLabels.map(([label], index) => `[${index + 1}] ${label}`), {
