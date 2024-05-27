@@ -810,7 +810,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                 if (index === 0) {
                     const endSpaceIndex = lineIndex + vSpaceWidth;
                     for (; lineIndex < endSpaceIndex; ++ lineIndex) {
-                        lines.push(`${bg}${textFG}${prefix[lineIndex]}${emptyLine}${suffix[lineIndex]}${NORMAL}`);
+                        lines.push(`${bg}${textFG}${prefix[lineIndex] ?? ''}${emptyLine}${suffix[lineIndex] ?? ''}${NORMAL}`);
                     }
                 }
 
@@ -882,13 +882,13 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                 const lineStr = line.join('');
                 const barEndIndex = lineIndex + barWidth;
                 for (; lineIndex < barEndIndex; ++ lineIndex) {
-                    lines.push(`${bg}${textFG}${prefix[lineIndex]}${lineStr}${suffix[lineIndex]}${NORMAL}`);
+                    lines.push(`${bg}${textFG}${prefix[lineIndex] ?? ''}${lineStr}${suffix[lineIndex] ?? ''}${NORMAL}`);
                 }
             }
         }
 
         for (; lineIndex < chartHeight; ++ lineIndex) {
-            lines.push(`${bg}${textFG}${prefix[lineIndex]}${emptyLine}${suffix[lineIndex]}${NORMAL}`);
+            lines.push(`${bg}${textFG}${prefix[lineIndex] ?? ''}${emptyLine}${suffix[lineIndex] ?? ''}${NORMAL}`);
         }
     }
 
