@@ -24,7 +24,7 @@ function makeSeries(xSize: number, f: (x: number) => number): Float64Array {
 function main() {
     const message = 'Press Escape to exit.';
 
-    process.stdout.write('\x1B[?25l\x1B[?7h');
+    process.stdout.write('\x1B[?25l\x1B[?7l');
 
     let interval: NodeJS.Timeout|null = null;
 
@@ -120,7 +120,7 @@ function main() {
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
     process.on('exit', () => {
-        process.stdout.write('\x1B[?25h\x1B[=7h\n');
+        process.stdout.write('\x1B[?25h\x1B[?7h\n');
     });
 }
 
