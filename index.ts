@@ -2,19 +2,66 @@ export type Orientation = 'horizontal'|'vertical';
 export type LabelPosition = 'before'|'after';
 
 export interface BarChartOptions {
+    /** Default: `false` */
     yLabel?: boolean|((y: number) => string);
+
+    /** Default: `false` */
     xLabel?: boolean|((x: number) => string);
+
+    /** Show minimum Y-value in Y-axis labels.
+     * 
+     * Default: `true`
+     */
     yLabelMin?: boolean;
+
+    /** Show maximum Y-value in Y-axis labels.
+     * 
+     * Default: `true`
+     */
     yLabelMax?: boolean;
+
+    /** Default: `'after'` if {@link orientation} is '`horizontal'`, `'before'` otherwise. */
     yLabelPosition?: LabelPosition;
+
+    /** Default: `'after'` if {@link orientation} is '`horizontal'`, `'before'` otherwise. */
     xLabelPosition?: LabelPosition;
-    width?:  number;
+
+    /** Default: 80 */
+    width?: number;
+
+    /** Default: 40 */
     height?: number;
+
+    /** Tries to fill the given space per default. */
     barWidth?: number;
+
+    /** From minimum to maximum Y-value per default. */
     yRange?: [min: number, max: number];
+
+    /** Default: `'horizontal'` */
     orientation?: Orientation;
-    textColor?: Color;
+
+    /** Default: `'black'` */
     backgroundColor?: Color;
+
+    /** Default: `'black'` if {@link backgroundColor} is `'white'`,
+     * `'default'` if {@link backgroundColor} is `'default'`, and `'white'` otherwise.
+     */
+    textColor?: Color;
+
+    /** A function to measure the width of a text as it will be displayed on the terminal.
+     * 
+     * This function shall ignore simple ANSI escapes, diacritics and other zero width
+     * Unicode code points, and shall at least handle all latin characters. It may assume
+     * that no newline occures in the text. You may want to pass in a function that uses
+     * a propper Unicode library to measure text width. The default function uses some
+     * very limited and hacky regular expressions.
+     * 
+     * Default: {@link getTextWidth}
+     * 
+     * @param text The text to measure.
+     * @returns The number of terminal characters the text is wide.
+     */
     textWidth?: (text: string) => number;
 }
 
@@ -269,6 +316,13 @@ export function wrapText(text: string, width: number, align: 'left'|'right'|'cen
     return { lines, maxWidth };
 }
 
+/**
+ * Plot a bar chart for terminal display using Unicode characters and ANSI escape esquences.
+ * 
+ * @param data 
+ * @param options 
+ * @returns The plotted bar chart
+ */
 export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], options?: BarChartOptions): string[] {
     const datas: Readonly<ColoredDataSeries>[] = [];
 
@@ -444,7 +498,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
 
             if (maxActualLabelWidth <= maxLabelWidth) {
                 const emptyLabel = ' '.repeat(maxLabelWidth);
-                const rpad = ' '.repeat(hSpaceWidth - lpadWidth);
+                const rpad = ' '.repeat(width - maxLabelWidth * xSize - lpadWidth);
                 for (let index = 0; index < maxLabelLines; ++ index) {
                     const line: string[] = [bg, textFG, lpad];
                     for (const [_label, wrapped] of xLabels) {
@@ -528,7 +582,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                 chartHeight - (((subCharHeight * (y / ySize)) / 8)|0) - ((intYZero / 8)|0) - 1;
             if (yIndex >= 0 && yIndex < chartHeight) {
                 const pad = ' '.repeat(maxYLabelWidth - labelWidth);
-                yLabelMap.set(yIndex, `${label}${pad}${NORMAL}`);
+                yLabelMap.set(yIndex, `${label}${pad}`);
             }
         }
 
@@ -619,7 +673,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                 const line = buf[yIndex];
                 const label = yLabelMap.get(yIndex);
                 if (label) {
-                    line.push(endSpace, ' ', label);
+                    line.push(endSpace, ' ', label, NORMAL);
                 } else {
                     line.push(endSpace, labelFiller, NORMAL);
                 }
@@ -639,8 +693,6 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
 
         let chartHeight = height - footer.length - (yLabel ? 1 : 0);
         let chartWidth = width;
-
-        // TODO: y-axis label
 
         let barWidth = options?.barWidth ?? Math.max((chartHeight / (1 + ((datas.length + 1) * xSize)))|0, 1);
         let vSpaceWidth = Math.max(((chartHeight - (datas.length * barWidth * xSize)) / (xSize + 1))|0, 0);
@@ -980,7 +1032,13 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
 const ZERO_WIDTH_REGEX = /\x1B\[\d+(;\d+){0,4}m|[\u{E000}-\u{FFFF}\u{200B}-\u{200D}\u{2060}\u{FEFF}\p{Mn}]/gu;
 // XXX: There are also half-width and full-width characters, emojis, flags etc. that all have different widths.
 
-/** HACK: Slow and not very accurat. */
+/** A very simple function to measure text width as displayed on the terminal.
+ * 
+ * **NOTE:** Slow and not very accurat. It doesn't handle things like emojis or any non-latin characters.
+ * 
+ * @param text The text to measure.
+ * @returns The width of the text.
+ */
 export function getTextWidth(text: string): number {
     return text.replace(ZERO_WIDTH_REGEX, '').length;
 }
@@ -1007,6 +1065,11 @@ const HCHAR_MAP = [
     '█', // 1/1 1
 ];
 
+/** Basic ANSI terminal colors.
+ * 
+ * Depending on your terminal `'gray'` might just look like `'white'` and
+ * the `'bright_'` colors might just look like the normal colors.
+ */
 export type Color =
     'black'|'red'|'green'|'yellow'|'blue'|'magenta'|'cyan'|'white'|'gray'|
     'bright_red'|'bright_green'|'bright_yellow'|'bright_blue'|'bright_magenta'|

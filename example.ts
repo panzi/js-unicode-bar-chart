@@ -1,4 +1,4 @@
-import { DataSeries, unicodeBarChart, getTextWidth } from "./index.js";
+import { DataSeries, unicodeBarChart, getTextWidth, Color, LabelPosition, Orientation } from "./index.js";
 
 const CLEAR = '\x1B[1;1H\x1B[2J';
 
@@ -31,9 +31,13 @@ function main() {
     const TAU = 2 * Math.PI;
     const redrawSleep = 1000/60;
     const xSize = 4;
-    let horizontal = false;
     const redraw = () => {
         const now = Date.now() * 0.1;
+        const orientation: Orientation = now % 5_000 > 2_500 ? 'horizontal' : 'vertical';
+        const backgroundColor: Color = now % 2_500 > 1_250 ? 'black' : 'white';
+        const yLabelPosition: LabelPosition = (now +  500) % 2_500 > 1_250 ? 'before' : 'after';
+        const xLabelPosition: LabelPosition = (now + 1000) % 2_500 > 1_250 ? 'before' : 'after';
+
         const availWidth  = process.stdout.columns ?? 80;
         const availHeight = process.stdout.rows ?? 40;
         const data: DataSeries[] = [
@@ -73,14 +77,15 @@ function main() {
 
         const lines = unicodeBarChart(data, {
             yRange: [-1, 2],
-            xLabel: x => `Year ${2001 + x + x * x} This is a long label to demonstrate how it gets wrapped. AVeryLongWordBlablaBlaBla`,
+            //xLabel: x => `Year ${2001 + x + x * x} This is a long label to demonstrate how it gets wrapped. AVeryLongWordBlablaBlaBla`,
+            xLabel: x => `Year ${2001 + x + x * x}`,
             yLabel: y => y.toFixed(3),
-            yLabelPosition: 'before',
-            xLabelPosition: 'before',
+            yLabelPosition,
+            xLabelPosition,
             width:  availWidth,
             height: availHeight - 2,
-            orientation: horizontal ? 'horizontal' : 'vertical',
-            //backgroundColor: 'white',
+            orientation,
+            backgroundColor,
             //textColor: 'black',
         });
         lines.push('');

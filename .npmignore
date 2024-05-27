@@ -6,3 +6,4 @@
 /dist/example.*
 *.png
 *.tgz
+package-lock.json
