@@ -63,6 +63,12 @@ export interface BarChartOptions {
      * @returns The number of terminal characters the text is wide.
      */
     textWidth?: (text: string) => number;
+
+    /** Only show blank page if the diagram would overflow. Doesn't work in all cases yet.
+     * 
+     * Default: `false`
+     */
+    overflowBlank?: boolean;
 }
 
 export type NumberArray = number[]|Float64Array|Float32Array|Int8Array|Int16Array|Int32Array;
@@ -326,6 +332,7 @@ export function wrapText(text: string, width: number, align: 'left'|'right'|'cen
 export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], options?: BarChartOptions): string[] {
     const datas: Readonly<ColoredDataSeries>[] = [];
 
+    const overflowBlank = options?.overflowBlank ?? false;
     const backgroundColor = options?.backgroundColor ?? 'black';
     const textColor = options?.textColor ?? (
         backgroundColor === 'white' ? 'black' :
@@ -400,7 +407,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
 
     const lines: string[] = [];
 
-    if (xSize === 0 || chartWidth < (datas.length * xSize) || chartHeight <= 0) {
+    if (xSize === 0 || (overflowBlank && (chartWidth < (datas.length * xSize) || chartHeight <= 0))) {
         const line = ' '.repeat(width);
         if (footer.length < height) {
             for (let y = 0; y < chartHeight; ++ y) {
@@ -540,7 +547,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
 
         const chartHeight = height - footer.length - header.length;
 
-        if (chartHeight <= 0 || chartWidth < (datas.length * xSize * barWidth + (xSize + 1) * hSpaceWidth)) {
+        if (overflowBlank && (chartHeight <= 0 || chartWidth < (datas.length * xSize * barWidth + (xSize + 1) * hSpaceWidth))) {
             const line = ' '.repeat(width);
             if (footer.length < height) {
                 for (let y = 0; y < chartHeight; ++ y) {
