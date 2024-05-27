@@ -1101,3 +1101,5 @@ const BOLD = '\x1B[1m';
 const DEFAULT_COLOR_SEQUENCE: Color[] = [
     'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white', 'black',
 ];
+
+export default unicodeBarChart;
