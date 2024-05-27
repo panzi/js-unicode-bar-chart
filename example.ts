@@ -120,7 +120,7 @@ function main() {
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
     process.on('exit', () => {
-        process.stdout.write('\x1B[?25h\x1B[?7l\n');
+        process.stdout.write('\x1B[?25h\x1B[=7h\n');
     });
 }
 
