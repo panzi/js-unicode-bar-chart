@@ -383,8 +383,8 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
         datas.push(newItem);
     }
 
-    const width  = options?.width  ?? 80;
-    const height = options?.height ?? 40;
+    let width  = options?.width  ?? 80;
+    let height = options?.height ?? 40;
 
     const orientation = options?.orientation ?? 'horizontal';
     const textWidth = options?.textWidth ?? getTextWidth;
@@ -402,10 +402,13 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
         backgroundColor,
     }));
 
-    const chartWidth = width;
-    const chartHeight = height - footer.length;
+    const xLabel = options?.xLabel === true ? String : options?.xLabel || null;
+    const yLabel = options?.yLabel === true ? String : options?.yLabel || null;
 
     const lines: string[] = [];
+
+    let chartWidth = width;
+    let chartHeight = height - footer.length;
 
     if (xSize === 0 || (overflowBlank && (chartWidth < (datas.length * xSize) || chartHeight <= 0))) {
         const line = ' '.repeat(width);
@@ -420,10 +423,16 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
             }
         }
         return lines;
-    }
+    } else {
+        if (chartHeight <= 0) {
+            chartHeight = 10;
+            height = footer.length + chartHeight + (orientation === 'horizontal' ? (xLabel ? 1 : 0) : (yLabel ? 1 : 0));
+        }
 
-    const xLabel = options?.xLabel === true ? String : options?.xLabel || null;
-    const yLabel = options?.yLabel === true ? String : options?.yLabel || null;
+        if (chartWidth < (datas.length * xSize)) {
+            width = chartWidth = datas.length * xSize + (orientation === 'horizontal' ? (yLabel ? 5 : 0) : (xLabel ? String(xSize + 1).length : 0));
+        }
+    }
 
     const yRange = options?.yRange;
 
@@ -505,7 +514,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
 
             if (maxActualLabelWidth <= maxLabelWidth) {
                 const emptyLabel = ' '.repeat(maxLabelWidth);
-                const rpad = ' '.repeat(width - maxLabelWidth * xSize - lpadWidth);
+                const rpad = ' '.repeat(Math.max(width - maxLabelWidth * xSize - lpadWidth, 0));
                 for (let index = 0; index < maxLabelLines; ++ index) {
                     const line: string[] = [bg, textFG, lpad];
                     for (const [_label, wrapped] of xLabels) {
@@ -545,7 +554,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
             footer.push(...oldFooter);
         }
 
-        const chartHeight = height - footer.length - header.length;
+        let chartHeight = height - footer.length - header.length;
 
         if (overflowBlank && (chartHeight <= 0 || chartWidth < (datas.length * xSize * barWidth + (xSize + 1) * hSpaceWidth))) {
             const line = ' '.repeat(width);
@@ -560,6 +569,16 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                 }
             }
             return lines;
+        } else {
+            if (chartHeight <= 0) {
+                chartHeight = 10;
+                height = footer.length + chartHeight + (orientation === 'horizontal' ? (xLabel ? 1 : 0) : (yLabel ? 1 : 0));
+            }
+
+            if (chartWidth < (datas.length * xSize * barWidth + (xSize + 1) * hSpaceWidth)) {
+                chartWidth = datas.length * xSize * barWidth + (xSize + 1) * hSpaceWidth;
+                width = (yLabel ? maxYLabelWidth + 1 : 0) + chartWidth;
+            }
         }
 
         lines.push(...header);
