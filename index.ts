@@ -493,7 +493,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
 
             const oldFooter = footer.splice(0, footer.length);
             const xLabelSection = xLabelPosition === 'before' ? header : footer;
-            const lpadWidth = Math.ceil(hSpaceWidth / 2);
+            const lpadWidth = Math.ceil(hSpaceWidth / 2) + (yLabelPosition === 'before' ? maxYLabelWidth + 1 : 0);
             const lpad = ' '.repeat(lpadWidth);
 
             if (maxActualLabelWidth <= maxLabelWidth) {

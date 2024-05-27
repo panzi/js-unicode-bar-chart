@@ -33,10 +33,12 @@ function main() {
     const xSize = 4;
     const redraw = () => {
         const now = Date.now() * 0.1;
-        const orientation: Orientation = now % 5_000 > 2_500 ? 'horizontal' : 'vertical';
+        const orientation: Orientation = (now + 1_500) % 5_000 > 2_500 ? 'horizontal' : 'vertical';
+        //const orientation: Orientation = 'horizontal';
         const backgroundColor: Color = now % 2_500 > 1_250 ? 'black' : 'white';
-        const yLabelPosition: LabelPosition = (now +  500) % 2_500 > 1_250 ? 'before' : 'after';
-        const xLabelPosition: LabelPosition = (now + 1000) % 2_500 > 1_250 ? 'before' : 'after';
+        const yLabelPosition: LabelPosition = (now +   500) % 2_500 > 1_250 ? 'before' : 'after';
+        //const yLabelPosition: LabelPosition = 'before';
+        const xLabelPosition: LabelPosition = (now + 1_000) % 2_500 > 1_250 ? 'before' : 'after';
 
         const availWidth  = process.stdout.columns ?? 80;
         const availHeight = process.stdout.rows ?? 40;
