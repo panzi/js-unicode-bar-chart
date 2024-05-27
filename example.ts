@@ -101,7 +101,7 @@ function main() {
     };
 
     const onInput = (data: Buffer) => {
-        if (data.includes(0x1B) || data.includes(0x71)) {
+        if (data.includes(0x1B) || data.includes(0x71) || data.includes(0x03)) {
             shutdown();
         }
     };
