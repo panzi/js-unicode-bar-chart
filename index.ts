@@ -637,7 +637,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
         const xLabelPosition = options?.xLabelPosition ?? 'before';
         const yLabelPosition = options?.yLabelPosition ?? 'before';
 
-        let chartHeight = height - footer.length;
+        let chartHeight = height - footer.length - (yLabel ? 1 : 0);
         let chartWidth = width;
 
         // TODO: y-axis label
@@ -647,6 +647,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
         const prefix: string[] = [];
         const suffix: string[] = [];
 
+        let prefixWidth = 0;
         if (xLabel) {
             let maxActualLabelWidth = 0;
             let maxLabelLines = 0;
@@ -711,6 +712,9 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                 }
 
                 chartWidth -= maxLabelWidth;
+                if (xLabelPosition === 'before') {
+                    prefixWidth = maxLabelWidth;
+                }
             } else {
                 footer.push(`${bg}${textFG}${' '.repeat(width)}${NORMAL}`);
                 footer.push(...wrapColoredText(xLabels.map(([label], index) => `[${index + 1}] ${label}`), {
@@ -721,7 +725,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                 }));
 
                 // chart height changed, so we need to recalculate some stuff
-                chartHeight = height - footer.length;
+                chartHeight = height - footer.length - (yLabel ? 1 : 0);
 
                 barWidth = options?.barWidth ?? Math.max((chartHeight / (1 + ((datas.length + 1) * xSize)))|0, 1);
                 vSpaceWidth = Math.max(((chartHeight - (datas.length * barWidth * xSize)) / (xSize + 1))|0, 0);
@@ -759,6 +763,9 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
                 }
 
                 chartWidth -= maxLabelWidth;
+                if (xLabelPosition === 'before') {
+                    prefixWidth = maxLabelWidth;
+                }
             }
         }
 
@@ -774,6 +781,79 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
         const intYZero = (subCharWidth * (yZero / ySize))|0;
         const yZeroIndex = chartWidth - ((intYZero / 8)|0) - 1;
         const clampedYZeroIndex = Math.min(Math.max(yZeroIndex, 0), chartWidth - 1);
+
+        if (yLabel) {
+            const yLabelMin = options?.yLabelMin ?? true;
+            const yLabelMax = options?.yLabelMax ?? true;
+            const yLabels: [left: number, width: number, label: string][] = [];
+
+            const yValues: number[] = [];
+
+            if (yLabelMin) {
+                yValues.push(yMin);
+            }
+
+            if (yLabelMax) {
+                yValues.push(yMax);
+            }
+
+            yValues.push(yEnd, yStart, 0);
+
+            for (const y of yValues) {
+                const label = yLabel(y);
+                const labelWidth = textWidth(label);
+                const intYfrac = subCharWidth * (y / ySize);
+                const intY = intYfrac < 0 ? Math.floor(intYfrac) : Math.ceil(intYfrac);
+                let yIndex = ((intY / 8)|0) + ((intYZero / 8)|0) + prefixWidth;
+
+                if (yIndex + labelWidth > width) {
+                    yIndex = width - labelWidth;
+                }
+
+                if (yIndex < 0) {
+                    yIndex = 0;
+                }
+
+                let overlap = false;
+                for (const [left, labelWidth] of yLabels) {
+                    if (
+                        (yIndex >= left && left + labelWidth > yIndex) ||
+                        (left >= yIndex && yIndex + labelWidth > left)
+                    ) {
+                        overlap = true;
+                        break;
+                    }
+                }
+
+                if (!overlap) {
+                    yLabels.push([yIndex, labelWidth, label]);
+                }
+            }
+
+            yLabels.sort((lhs, rhs) => lhs[0] - rhs[0]);
+
+            const line: string[] = [bg, textFG];
+            let prevIndex = 0;
+            for (const [left, labelWidth, label] of yLabels) {
+                if (prevIndex < left) {
+                    line.push(' '.repeat(left - prevIndex));
+                }
+                line.push(label);
+                prevIndex = left + labelWidth;
+            }
+
+            if (prevIndex < width) {
+                line.push(' '.repeat(width - prevIndex));
+            }
+
+            line.push(NORMAL);
+
+            if (yLabelPosition === 'before') {
+                lines.push(line.join(''));
+            } else {
+                footer.unshift(line.join(''));
+            }
+        }
 
         for (const item of datas) {
             const values = new Int32Array(xSize);

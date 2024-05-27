@@ -24,7 +24,7 @@ function makeSeries(xSize: number, f: (x: number) => number): Float64Array {
 function main() {
     const message = 'Press Escape to exit.';
 
-    process.stdout.write('\x1B[?25l');
+    process.stdout.write('\x1B[?25l\x1B[?7h');
 
     let interval: NodeJS.Timeout|null = null;
 
@@ -73,9 +73,9 @@ function main() {
 
         const lines = unicodeBarChart(data, {
             yRange: [-1, 2],
-            xLabel: x => `Year ${2001 + x + x * x}`,
+            xLabel: x => `Year ${2001 + x + x * x} This is a long label to demonstrate how it gets wrapped. AVeryLongWordBlablaBlaBla`,
             yLabel: y => y.toFixed(3),
-            yLabelPosition: 'after',
+            yLabelPosition: 'before',
             xLabelPosition: 'before',
             width:  availWidth,
             height: availHeight - 2,
@@ -113,7 +113,7 @@ function main() {
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
     process.on('exit', () => {
-        process.stdout.write('\x1B[?25h');
+        process.stdout.write('\x1B[?25h\x1B[?7l\n');
     });
 }
 
