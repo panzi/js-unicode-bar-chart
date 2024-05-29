@@ -1,7 +1,7 @@
 {
   "name": "@panzi/unicode-bar-chart",
   "description": "A very simple function to plot a bar chart for console output using Unicode.",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "main": "dist/index.js",
   "license": "MIT",

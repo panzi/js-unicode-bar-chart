@@ -214,6 +214,16 @@ export function wrapColoredText(items: ReadonlyArray<readonly [text?: string|und
 }
 
 function alignInternal(text: string, textWidth: number, width: number, align: 'left'|'right'|'center'): string {
+    if (width === 0) {
+        return '';
+    }
+
+    if (textWidth > width) {
+        // TODO: somehow truncate text? need to measure the length.
+        text = '…';
+        textWidth = 1;
+    }
+
     const rem = Math.max(width - textWidth, 0);
     if (align === 'center') {
         const rpad = rem >> 1;
@@ -483,7 +493,7 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
             chartWidth -= maxYLabelWidth + 1;
         }
 
-        const barWidth = options?.barWidth ?? Math.max((chartWidth / (1 + ((datas.length + 1) * xSize)))|0, 1);
+        const barWidth = Math.max(options?.barWidth ?? ((chartWidth / (1 + ((datas.length + 1) * xSize)))|0), 1);
         const hSpaceWidth = Math.max(((chartWidth - (datas.length * barWidth * xSize)) / (xSize + 1))|0, 0);
         const hSpace = ' '.repeat(hSpaceWidth);
         const endSpace = ' '.repeat(Math.max(chartWidth - (xSize * (datas.length * barWidth + hSpaceWidth)), 0));
@@ -532,14 +542,21 @@ export function unicodeBarChart(data: (Readonly<DataSeries>|NumberArray)[], opti
 
                 for (let x = 0; x < xSize; ++ x) {
                     const footnote = String(x + 1);
-                    const space = maxLabelWidth - textWidth(footnote);
-                    const lpad = space >> 1;
-                    const rpad = space - lpad;
-                    line.push(' '.repeat(lpad), footnote, ' '.repeat(rpad));
+                    const footnoteWidth = textWidth(footnote);
+                    if (maxLabelWidth < footnoteWidth) {
+                        if (maxLabelWidth > 0) {
+                            line.push(footnote.slice(0, maxLabelWidth - 1) + '…');
+                        }
+                    } else {
+                        const space = maxLabelWidth - footnoteWidth;
+                        const lpad = space >> 1;
+                        const rpad = space - lpad;
+                        line.push(' '.repeat(lpad), footnote, ' '.repeat(rpad));
+                    }
                     lineWidth += maxLabelWidth;
                 }
 
-                line.push(' '.repeat(width - lineWidth), NORMAL);
+                line.push(' '.repeat(Math.max(width - lineWidth, 0)), NORMAL);
                 xLabelSection.push(line.join(''));
 
                 footer.push(`${bg}${textFG}${' '.repeat(width)}${NORMAL}`);
